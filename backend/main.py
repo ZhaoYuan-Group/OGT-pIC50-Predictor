@@ -16,16 +16,16 @@ from rdkit import Chem
 from rdkit.Chem import Draw, AllChem, Descriptors, DataStructs
 from DeepPurpose import utils, CompoundPred
 
-# ========================== 路径配置 ==========================
+# ========================== Path Configuration ==========================
 CURRENT_FILE_PATH = Path(__file__).resolve()
 BACKEND_DIR = CURRENT_FILE_PATH.parent
 MODEL_ROOT = BACKEND_DIR.parent / "model"  
 
 if not MODEL_ROOT.exists():
-    raise FileNotFoundError(f"The model root directory does not exist, please check the path:{MODEL_ROOT}")
-print(f"The model root directory has been confirmed:{MODEL_ROOT}")
+    raise FileNotFoundError(f"The model root directory does not exist, please check the path: {MODEL_ROOT}")
+print(f"The model root directory has been confirmed: {MODEL_ROOT}")
 
-# ========================== 模型编码方式映射 ==========================
+# ========================== Model Encoding Mapping ==========================
 MODEL_DEFAULT_ENCODING = {
     "rdkit_2d_normalizedModel": "rdkit_2d_normalized",
     "DaylightModel": "Daylight",
@@ -33,7 +33,7 @@ MODEL_DEFAULT_ENCODING = {
     "MorganModel": "Morgan"
 }
 
-# ========================== Pydantic 模型定义 ==========================
+# ========================== Pydantic Model Definitions ==========================
 class ResultItem(BaseModel):
     id: str
     smiles: str
@@ -52,9 +52,9 @@ class PaginatedResults(BaseModel):
     total_pages: int
     current_page: int
     items: List[ResultItem]
-    model_used: Optional[str]  # 返回当前筛选的模型名称
+    model_used: Optional[str]  # Return the currently filtered model name
 
-# ========================== 多模型管理 ==========================
+# ========================== Multi-Model Management ==========================
 class ModelManager:
     def __init__(self):
         self.models: Dict[str, Any] = {}
@@ -63,38 +63,38 @@ class ModelManager:
 
     def load_model(self, model_name: str, config_filename: str, model_filename: str) -> None:
         try:
-            print(f"\nloading: {model_name}...")
+            print(f"\nLoading: {model_name}...")
             model_dir = MODEL_ROOT / model_name
             if not model_dir.exists():
-                raise FileNotFoundError(f"Model folder does not exist:{model_dir}")
+                raise FileNotFoundError(f"Model folder does not exist: {model_dir}")
             
             config_path = model_dir / config_filename
             model_path = model_dir / model_filename
             
             if not config_path.exists():
-                raise FileNotFoundError(f"The configuration file does not exist:{config_path}")
+                raise FileNotFoundError(f"The configuration file does not exist: {config_path}")
             if not model_path.exists():
-                raise FileNotFoundError(f"The configuration file does not exist:{model_path}")
+                raise FileNotFoundError(f"The model file does not exist: {model_path}")
 
-            # 加载配置和模型
+            # Load configuration and model
             config = utils.load_dict(str(model_dir))
             model = CompoundPred.model_initialize(**config)
             model.load_pretrained(str(model_path))
 
-            # 确保配置中存在drug_encoding
+            # Ensure drug_encoding exists in configuration
             if "drug_encoding" not in config:
                 config["drug_encoding"] = MODEL_DEFAULT_ENCODING.get(model_name, "rdkit_2d_normalized")
-                print(f"Model {model_name} Configuration Supplement drug_encoding：{config['drug_encoding']}")
+                print(f"Model {model_name} configuration supplemented with drug_encoding: {config['drug_encoding']}")
 
             self.models[model_name] = model
             self.configs[model_name] = config
-            print(f"Model {model_name} loading Successfully")
+            print(f"Model {model_name} loaded successfully")
 
             if self.default_model is None:
                 self.default_model = model_name
 
         except Exception as e:
-            raise RuntimeError(f"Model {model_name} loading failed: {e}")
+            raise RuntimeError(f"Failed to load model {model_name}: {e}")
 
     def get_model(self, model_name: Optional[str] = None) -> Any:
         if not self.models:
@@ -102,50 +102,50 @@ class ModelManager:
         
         target_model_name = model_name or self.default_model
         if target_model_name not in self.models:
-            raise ValueError(f"Model {target_model_name} does not exist,available models:{list(self.models.keys())}")
+            raise ValueError(f"Model {target_model_name} does not exist, available models: {list(self.models.keys())}")
         return self.models[target_model_name]
 
     def get_model_config(self, model_name: Optional[str] = None) -> Any:
         if not self.configs:
-            raise RuntimeError("No model configuration is loaded")
+            raise RuntimeError("No model configurations loaded")
             
         target_model_name = model_name or self.default_model
         if target_model_name not in self.configs:
-            raise ValueError(f"Model {target_model_name} the configuration does not exist")
+            raise ValueError(f"Configuration for model {target_model_name} does not exist")
         return self.configs[target_model_name]
 
     def list_models(self) -> List[str]:
         return list(self.models.keys())
 
-# ========================== 模型加载 ==========================
+# ========================== Model Loading ==========================
 try:
-    print("初始化模型管理器...")
+    print("Initializing model manager...")
     model_manager = ModelManager()
     
-    # 加载所有模型
+    # Load all models
     model_manager.load_model("rdkit_2d_normalizedModel", "config.pkl", "model.pt")
     model_manager.load_model("DaylightModel", "config.pkl", "model.pt")
     model_manager.load_model("ErGModel", "config.pkl", "model.pt")
     model_manager.load_model("MorganModel", "config.pkl", "model.pt")
     
     print(f"\nAll models loaded, available models: {model_manager.list_models()}")
-    print(f"Default model:{model_manager.default_model}")
+    print(f"Default model: {model_manager.default_model}")
 
 except Exception as e:
-    raise RuntimeError(f"Model loading failed on startup:{e}")
+    raise RuntimeError(f"Failed to load models on startup: {e}")
 
-# ========================== 内存数据库优化 ==========================
-# 按模型分类存储结果，提高查询效率
-db: Dict[str, dict] = {}  # 全局存储所有结果
-model_results: Dict[str, List[str]] = {}  # 记录每个模型对应的结果ID列表
+# ========================== In-Memory Database Optimization ==========================
+# Store results by model for improved query efficiency
+db: Dict[str, dict] = {}  # Global storage for all results
+model_results: Dict[str, List[str]] = {}  # Record result IDs for each model
 
-# 初始化每个模型的结果列表
+# Initialize result lists for each model
 for model_name in model_manager.list_models():
     model_results[model_name] = []
 
-# ========================== 分子特征生成函数 ==========================
+# ========================== Molecular Feature Generation Functions ==========================
 def smiles_to_rdkit2d(smiles_list: List[str]) -> np.ndarray:
-    """将SMILES转换为RDKit 2D特征"""
+    """Convert SMILES to RDKit 2D features"""
     features = []
     for smiles in smiles_list:
         mol = Chem.MolFromSmiles(smiles)
@@ -163,9 +163,9 @@ def smiles_to_rdkit2d(smiles_list: List[str]) -> np.ndarray:
     return np.array(features, dtype=np.float32)
 
 def smiles_to_morgan(smiles_list: List[str], radius=2, nBits=2048) -> np.ndarray:
-    
+    """Convert SMILES to Morgan fingerprints"""
     features = []
-    # 处理RDKit版本差异（GetMorganGenerator/MorganGenerator）
+    # Handle RDKit version differences (GetMorganGenerator/MorganGenerator)
     try:
         generator = AllChem.MorganGenerator(radius=radius, nBits=nBits)
     except AttributeError:
@@ -183,7 +183,7 @@ def smiles_to_morgan(smiles_list: List[str], radius=2, nBits=2048) -> np.ndarray
     return np.array(features)
 
 def smiles_to_daylight(smiles_list: List[str]) -> np.ndarray:
-    """将SMILES转换为Daylight指纹"""
+    """Convert SMILES to Daylight fingerprints"""
     features = []
     for smiles in smiles_list:
         mol = Chem.MolFromSmiles(smiles)
@@ -204,7 +204,7 @@ def smiles_to_daylight(smiles_list: List[str]) -> np.ndarray:
     return np.array(features)
 
 def smiles_to_erg(smiles_list: List[str]) -> np.ndarray:
-    """将SMILES转换为ErG特征"""
+    """Convert SMILES to ErG features"""
     features = []
     for smiles in smiles_list:
         mol = Chem.MolFromSmiles(smiles)
@@ -218,7 +218,7 @@ def smiles_to_erg(smiles_list: List[str]) -> np.ndarray:
             features.append([0.0, 0.0, 0.0])
     return np.array(features, dtype=np.float32)
 
-# ========================== FastAPI 应用初始化 ==========================
+# ========================== FastAPI Application Initialization ==========================
 app = FastAPI(title="pIC50 Predictor API", version="2.3.0")
 
 app.add_middleware(
@@ -229,38 +229,38 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ========================== 辅助函数 ==========================
+# ========================== Helper Functions ==========================
 def run_prediction(smiles_list: List[str], model_name: Optional[str] = None) -> List[ResultItem]:
-    """执行预测并返回ResultItem列表"""
+    """Execute prediction and return list of ResultItem"""
     if not smiles_list:
         return []
         
-    # 筛选有效SMILES
+    # Filter valid SMILES
     valid_smiles = [s for s in smiles_list if Chem.MolFromSmiles(s) is not None]
     invalid_smiles = [s for s in smiles_list if s not in valid_smiles]
     if invalid_smiles:
-        print(f"Warning: Detected{len(invalid_smiles)}invalid SMILES, skipped")
+        print(f"Warning: Detected {len(invalid_smiles)} invalid SMILES strings, skipped")
     if not valid_smiles:
-        raise HTTPException(status_code=400, detail="No valid SMILES string was provided.")
+        raise HTTPException(status_code=400, detail="No valid SMILES strings were provided.")
         
     try:
-        # 获取模型和配置
+        # Get model and configuration
         model = model_manager.get_model(model_name)
         model_config = model_manager.get_model_config(model_name)
         used_model = model_name or model_manager.default_model
-        print(f"Using the Model {used_model} make predictions")
+        print(f"Using model {used_model} for predictions")
 
-        # 获取编码方式
+        # Get encoding method
         drug_encoding = model_config.get(
             "drug_encoding", 
             MODEL_DEFAULT_ENCODING.get(used_model, "rdkit_2d_normalized")
         )
         print(f"Model encoding method: {drug_encoding}")
 
-        # 构建输入数据（使用DeepPurpose标准处理流程）
+        # Build input data (using DeepPurpose standard processing pipeline)
         df_input = pd.DataFrame({
             "Drug": valid_smiles,
-            "Label": [0.0] * len(valid_smiles)  # 占位标签
+            "Label": [0.0] * len(valid_smiles)  # Placeholder labels
         })
         
         x_pred = utils.data_process(
@@ -270,24 +270,24 @@ def run_prediction(smiles_list: List[str], model_name: Optional[str] = None) -> 
             split_method="no_split"
         )
 
-        # 执行预测
+        # Execute prediction
         predictions = model.predict(x_pred)
         
-        # 统一预测结果格式为numpy数组
+        # Unify prediction result format to numpy array
         if isinstance(predictions, list):
             predictions = np.array(predictions, dtype=np.float32).flatten()
         elif not isinstance(predictions, np.ndarray):
-            raise TypeError(f"The predicted result type is abnormal: {type(predictions)}")
+            raise TypeError(f"Abnormal prediction result type: {type(predictions)}")
 
-        print(f"The prediction is completed and the result shape is: {predictions.shape},Data Type: {predictions.dtype}")
+        print(f"Prediction completed, result shape: {predictions.shape}, Data Type: {predictions.dtype}")
 
-        # 验证预测结果数量
+        # Verify number of prediction results
         if len(predictions) != len(valid_smiles):
             raise ValueError(
-                f"The number of prediction results does not match (input:{len(valid_smiles)},Output:{len(predictions)}）"
+                f"Number of prediction results does not match (input: {len(valid_smiles)}, output: {len(predictions)})"
             )
 
-        # 构建ResultItem列表
+        # Build ResultItem list
         current_time = datetime.datetime.now().isoformat()
         results = []
         for i, (smiles, pred_value) in enumerate(zip(valid_smiles, predictions)):
@@ -319,7 +319,7 @@ def run_prediction(smiles_list: List[str], model_name: Optional[str] = None) -> 
         print(error_detail)
         raise HTTPException(status_code=500, detail=error_detail)
 
-# ========================== API 接口定义 ==========================
+# ========================== API Endpoint Definitions ==========================
 @app.get("/")
 def read_root():
     return {
@@ -331,19 +331,19 @@ def read_root():
 @app.post("/predict", response_model=List[ResultItem], tags=["predict"])
 def predict_single(
     smiles: str = Query(..., description="SMILES string (supports multiple lines, one per line)"),
-    model_name: Optional[str] = Query(None, description="Model name, optional value:" + ", ".join(model_manager.list_models()))
+    model_name: Optional[str] = Query(None, description="Model name, available values: " + ", ".join(model_manager.list_models()))
 ):
-    """预测单个或多个SMILES的pIC50值"""
+    """Predict pIC50 values for single or multiple SMILES strings"""
     smiles_list = [s.strip() for s in smiles.split("\n") if s.strip()]
     if not smiles_list:
         raise HTTPException(status_code=422, detail="Please provide at least one valid SMILES string.")
     
     results = run_prediction(smiles_list, model_name)
     
-    # 保存结果到内存数据库，同时记录模型对应的结果ID
+    # Save results to in-memory database and record result IDs for the model
     for item in results:
         db[item.id] = item.dict()
-        # 将结果ID添加到对应模型的列表中
+        # Add result ID to corresponding model's list
         if item.model_used not in model_results:
             model_results[item.model_used] = []
         model_results[item.model_used].append(item.id)
@@ -353,9 +353,9 @@ def predict_single(
 @app.post("/upload_csv", response_model=List[ResultItem], tags=["predict"])
 async def upload_csv(
     file: UploadFile = File(..., description="CSV file containing a SMILES column"),
-    model_name: Optional[str] = Form(None, description="Model name, optional value:" + ", ".join(model_manager.list_models()))
+    model_name: Optional[str] = Form(None, description="Model name, available values: " + ", ".join(model_manager.list_models()))
 ):
-    """从CSV文件上传SMILES并预测pIC50值"""
+    """Upload SMILES from CSV file and predict pIC50 values"""
     if not file.filename.endswith('.csv'):
         raise HTTPException(status_code=400, detail="Invalid file type, please upload a CSV file.")
     
@@ -365,17 +365,17 @@ async def upload_csv(
         if 'SMILES' not in df.columns:
             raise HTTPException(status_code=400, detail="The CSV file must contain a 'SMILES' column.")
         smiles_list = df['SMILES'].dropna().tolist()
-        print(f"Extract up to {len(smiles_list)} SMILES from CSV")
+        print(f"Extracted up to {len(smiles_list)} SMILES strings from CSV")
         
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to parse CSV file: {str(e)}")
 
     results = run_prediction(smiles_list, model_name)
     
-    # 保存结果到内存数据库，同时记录模型对应的结果ID
+    # Save results to in-memory database and record result IDs for the model
     for item in results:
         db[item.id] = item.dict()
-        # 将结果ID添加到对应模型的列表中
+        # Add result ID to corresponding model's list
         if item.model_used not in model_results:
             model_results[item.model_used] = []
         model_results[item.model_used].append(item.id)
@@ -390,34 +390,34 @@ def get_results(
     sort_by: Optional[str] = Query("timestamp", description="Field to sort by (e.g., 'pic50', 'mol_wt', 'timestamp')"),
     sort_dir: Optional[str] = Query("desc", description="Sort direction: 'asc' for ascending, 'desc' for descending")
 ):
-    """分页查询历史预测结果，支持按模型筛选和动态排序"""
-    # 根据模型筛选结果
+    """Query historical prediction results with pagination, support filtering by model and dynamic sorting"""
+    # Filter results by model
     if model_name and model_name.lower() != 'all':
-        # 验证模型名称是否存在
+        # Validate model name exists
         if model_name not in model_manager.list_models():
             raise HTTPException(status_code=400, detail=f"Model {model_name} does not exist")
         
-        # 获取该模型的所有结果ID并获取对应的结果
+        # Get all result IDs for this model and corresponding results
         result_ids = model_results.get(model_name, [])
         all_items = [db[result_id] for result_id in result_ids if result_id in db]
     else:
-        # 获取所有模型的结果
+        # Get results from all models
         all_items = list(db.values())
     
-    # 动态排序逻辑
+    # Dynamic sorting logic
     if all_items:
-        # 检查排序字段是否存在，以防出错
+        # Check if sort field exists to prevent errors
         sample_item = all_items[0]
         if sort_by not in sample_item:
-            # 如果字段无效，则回退到默认按时间戳排序
+            # Fallback to default sorting by timestamp if field is invalid
             sort_by = "timestamp"
             
         reverse_order = sort_dir.lower() == "desc"
         
-        # 对全量数据进行排序
+        # Sort full dataset
         all_items.sort(key=lambda x: x.get(sort_by, 0), reverse=reverse_order)
     
-    # 计算分页信息
+    # Calculate pagination information
     total_items = len(all_items)
     total_pages = (total_items + size - 1) // size or 1
     start_index = (page - 1) * size
@@ -433,9 +433,9 @@ def get_results(
 
 @app.get("/plot_distribution", tags=["Visualization"])
 def get_plot_distribution(model_name: Optional[str] = Query(None, description="Filter by model name")):
-    """获取pIC50预测值的分布直方图数据"""
+    """Get histogram data for pIC50 prediction value distribution"""
     if model_name:
-        # 使用模型结果索引获取该模型的所有预测值
+        # Use model result index to get all prediction values for this model
         result_ids = model_results.get(model_name, [])
         predictions = [db[result_id]['pic50'] for result_id in result_ids if result_id in db]
     else:
@@ -454,8 +454,8 @@ def get_plot_distribution(model_name: Optional[str] = Query(None, description="F
     }
 
 @app.get("/mol_image", tags=["Visualization"])
-def get_mol_image(smiles: str = Query(..., description="SMILES string used to generate the structure image")):
-    """生成分子结构的PNG图像"""
+def get_mol_image(smiles: str = Query(..., description="SMILES string used to generate the molecular structure image")):
+    """Generate PNG image of molecular structure"""
     mol = Chem.MolFromSmiles(smiles)
     if mol is None:
         raise HTTPException(status_code=400, detail="Invalid SMILES string, unable to generate molecular structure.")
@@ -467,9 +467,8 @@ def get_mol_image(smiles: str = Query(..., description="SMILES string used to ge
 
 @app.get("/models", tags=["Model Management"])
 def get_available_models():
-    """获取所有可用模型列表"""
+    """Get list of all available models"""
     return {
         "available_models": model_manager.list_models(),
         "default_model": model_manager.default_model
     }
-    

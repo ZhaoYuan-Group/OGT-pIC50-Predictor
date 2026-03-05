@@ -974,16 +974,16 @@
         const downloadFormat = document.getElementById('download-format');
         const downloadPreviewContent = document.getElementById('download-preview-content');
         
-        // 排序状态变量
+
         let sortField = '';
-        let sortDirection = 'asc'; // 'asc' 升序, 'desc' 降序
-        let allResults = []; // 存储所有结果（新结果置顶）
-        let sortedResultsCache = null; // 缓存排序结果
+        let sortDirection = 'asc'; 
+        let allResults = []; 
+        let sortedResultsCache = null; 
         let lastSortField = '';
         let lastSortDirection = '';
-        let resultIdCounter = 1; // 用于生成唯一ID
+        let resultIdCounter = 1; 
         
-        // 导航功能
+
         function navigateTo(page) {
             document.querySelectorAll('.page-content').forEach(el => {
                 el.classList.remove('active');
@@ -1005,7 +1005,7 @@
             }
         }
         
-        // 移动端导航栏切换
+
         function toggleNavbar() {
             navbarLinks.classList.toggle('show');
             const toggleIcon = document.querySelector('.navbar-toggle i');
@@ -1018,7 +1018,7 @@
             }
         }
         
-        // 导航栏滚动效果
+
         window.addEventListener('scroll', () => {
             if (window.scrollY > 10) {
                 mainNavbar.classList.add('scrolled');
@@ -1103,15 +1103,15 @@
             }
         }
         
-        // 核心功能：预测成功后处理逻辑 - 新结果置顶
+
         async function handlePrediction(apiCallPromise, customName = null) {
             const newResults = await apiCallPromise;
             console.log("新预测结果:", newResults);
 
             if (newResults && Array.isArray(newResults)) {
-                // 为每个新结果添加唯一ID，并设置分子名称（如果提供）
+
                 const resultsWithIds = newResults.map((item, index) => {
-                    // 如果有自定义名称且是单个分子，使用自定义名称
+
                     let moleculeName = item.molecule_name || `Molecule-${resultIdCounter}`;
                     if (customName && newResults.length === 1) {
                         moleculeName = customName;
@@ -1121,29 +1121,29 @@
                         id: resultIdCounter++,
                         ...item,
                         molecule_name: moleculeName,
-                        timestamp: new Date().getTime() // 添加时间戳用于默认排序
+                        timestamp: new Date().getTime() 
                     };
                 });
                 
-                // 新结果置顶：添加到数组开头
+
                 allResults = [...resultsWithIds, ...allResults];
                 
-                // 重置到第一页，确保用户看到最新结果
+
                 currentPage = 1;
-                
-                // 重新加载结果
+
+
                 fetchResults(1, resultsModelFilter.value);
                 
-                // 同步更新所有相关视图
+
                 updateDownloadPreview();
                 if (chartContent.classList.contains('show')) {
                     updateDistributionChart();
                 }
                 
-                // 显示提示信息
-                alert(`预测完成！已添加 ${newResults.length} 个新结果，现在共显示 ${allResults.length} 个结果。`);
+
+                alert(`Prediction complete! Added ${newResults.length} new result, now showing a total of ${allResults.length} One result.`);
             } else if (newResults) {
-                // 处理单个结果的情况
+
                 let moleculeName = newResults.molecule_name || `Molecule-${resultIdCounter}`;
                 if (customName) {
                     moleculeName = customName;
@@ -1153,25 +1153,25 @@
                     id: resultIdCounter++,
                     ...newResults,
                     molecule_name: moleculeName,
-                    timestamp: new Date().getTime() // 添加时间戳用于默认排序
+                    timestamp: new Date().getTime()
                 };
                 
-                // 新结果置顶
+
                 allResults.unshift(resultWithId);
                 
-                // 重置到第一页
+
                 currentPage = 1;
                 
-                // 重新加载结果
+
                 fetchResults(1, resultsModelFilter.value);
                 
-                // 同步更新视图
+
                 updateDownloadPreview();
                 if (chartContent.classList.contains('show')) {
                     updateDistributionChart();
                 }
                 
-                alert(`预测完成！现在共显示 ${allResults.length} 个结果。`);
+                alert(`Prediction complete! A total of ${allResults.length} results are now displayed.`);
             }
         }
         
@@ -1258,17 +1258,17 @@
             );
         }
         
-        // 核心功能：获取所有结果并在表格中显示
+
         async function fetchResults(page = 1, modelFilter = '') {
             currentPage = page;
 
-            // 应用模型筛选
+
             let filteredResults = [...allResults];
             if (modelFilter) {
                 filteredResults = filteredResults.filter(item => item.model_used === modelFilter);
             }
 
-            // 排序逻辑 - 默认按时间戳降序（最新的在前面）
+
             let sortedResults;
             if (sortField && (lastSortField !== sortField || lastSortDirection !== sortDirection)) {
                 sortedResults = sortResults([...filteredResults], sortField, sortDirection);
@@ -1278,63 +1278,63 @@
             } else if (sortedResultsCache && !modelFilter) {
                 sortedResults = sortedResultsCache;
             } else {
-                // 默认排序：按时间戳降序（最新的在前面）
+
                 sortedResults = [...filteredResults].sort((a, b) => b.timestamp - a.timestamp);
             }
 
-            // 分页逻辑
+
             const startIndex = (currentPage - 1) * pageSize;
             const currentPageResults = sortedResults.slice(startIndex, startIndex + pageSize);
             
-            renderTable(currentPageResults); // 渲染当前页数据
+            renderTable(currentPageResults); 
             renderPagination({
                 current_page: currentPage,
                 total_pages: Math.ceil(sortedResults.length / pageSize),
                 total_items: sortedResults.length
             });
             
-            // 更新下载相关状态
+
             updateDownloadButtonStatus();
             updateDownloadPreview(modelFilter);
         }
         
-        // 排序函数
+
         function sortResults(results, field, direction) {
             return [...results].sort((a, b) => {
-                // 处理空值情况 - 空值排在最后
+
                 if (a[field] === undefined || a[field] === null) return 1;
                 if (b[field] === undefined || b[field] === null) return -1;
                 
-                // 数值比较
+
                 if (typeof a[field] === 'number' && typeof b[field] === 'number') {
                     const diff = a[field] - b[field];
                     if (diff !== 0) {
                         return direction === 'asc' ? diff : -diff;
                     }
-                    // 当主要排序字段值相等时，使用时间戳作为次要排序条件确保最新的在前
+
                     return b.timestamp - a.timestamp;
                 }
                 
-                // 字符串比较
+
                 const strA = String(a[field]).toLowerCase();
                 const strB = String(b[field]).toLowerCase();
                 const comparison = strA.localeCompare(strB, undefined, { sensitivity: 'base' });
                 if (comparison !== 0) {
                     return direction === 'asc' ? comparison : -comparison;
                 }
-                // 当主要排序字段值相等时，使用时间戳作为次要排序条件确保最新的在前
+
                 return b.timestamp - a.timestamp;
             });
         }
         
-        // 清除所有排序指示符
+
         function clearSortIndicators() {
             document.querySelectorAll('.sort-indicator').forEach(indicator => {
                 indicator.textContent = '';
             });
         }
         
-        // 设置排序指示符
+
         function setSortIndicator(field) {
             clearSortIndicators();
             const indicator = document.querySelector(`.sortable-header[data-sort="${field}"] .sort-indicator`);
@@ -1353,7 +1353,7 @@
                 return;
             }
             
-            // 获取当前页的起始ID
+
             const startId = (currentPage - 1) * pageSize + 1;
             
             items.forEach((item, index) => {
@@ -1368,7 +1368,7 @@
                 const pic50Display = (typeof pic50Value === 'number') ? pic50Value.toFixed(3) : 'N/A';
                 const currentId = startId + index;            
             
-                // 预测结果表格行
+
                 const resultsRow = document.createElement('tr');
                 resultsRow.innerHTML = `
                     <td>${currentId}</td>
@@ -1376,12 +1376,12 @@
                     <td><code>${smiles}</code></td>
                     <td>${pic50Display}</td>
                     <td>${modelUsed}</td>
-                    <td><img src="${API_BASE_URL}/mol_image?smiles=${encodeURIComponent(smiles)}" alt="分子 ${smiles} 的结构图" width="100"></td>
+                    <td><img src="${API_BASE_URL}/mol_image?smiles=${encodeURIComponent(smiles)}" alt="Structure diagram of the molecule ${smiles}" width="100"></td>
                 `;
                 resultsRow.dataset.id = item.id || currentId;
                 resultsTableBody.appendChild(resultsRow);
 
-                // Lipinski规则表格行
+
                 const lipinskiRow = document.createElement('tr');
                 lipinskiRow.innerHTML = `
                     <td>${currentId}</td>
@@ -1427,15 +1427,15 @@
         async function updateDistributionChart(modelName = '') {
             if (!chartContent.classList.contains('show')) return;
             
-            // 使用本地缓存的所有结果来生成图表
+
             let chartData = [...allResults];
             
-            // 应用模型筛选
+
             if (modelName) {
                 chartData = chartData.filter(item => item.model_used === modelName);
             }
             
-            // 如果没有数据，不绘制图表
+
             if (chartData.length === 0) {
                 if (distributionChart) {
                     distributionChart.destroy();
@@ -1446,10 +1446,10 @@
                 return;
             }
             
-            // 提取pIC50值并生成分布数据
+
             const pic50Values = chartData.map(item => item.pic50).filter(v => v !== null && v !== undefined);
             
-            // 创建分布区间（0-10，步长0.5）
+
             const bins = [];
             const binSize = 0.5;
             const start = 0;
@@ -1462,7 +1462,7 @@
                 });
             }
             
-            // 统计每个区间的数量
+
             pic50Values.forEach(value => {
                 if (value >= start && value < end) {
                     const index = Math.floor((value - start) / binSize);
@@ -1560,7 +1560,7 @@
             }
         }
         
-        // 排序事件处理
+
         function handleSort(field) {
             if (sortField === field) {
                 sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
@@ -1573,7 +1573,7 @@
             fetchResults(currentPage, resultsModelFilter.value);
         }
 
-        // 下载功能相关函数
+
         function updateDownloadButtonStatus() {
             const filteredResults = getFilteredResultsForDownload();
             downloadBtn.disabled = filteredResults.length === 0;
@@ -1593,7 +1593,7 @@
                 filteredResults = filteredResults.filter(item => item.model_used === modelFilter);
             }
             
-            // 保持排序 - 最新的在前面
+
             return [...filteredResults].sort((a, b) => b.timestamp - a.timestamp);
         }
         
@@ -1709,7 +1709,7 @@
         function downloadAsExcel(data, fileName) {
             if (data.length === 0) return;
             
-            // 清理不需要的字段
+
             const cleanedData = data.map(item => {
                 const cleaned = {...item};
                 delete cleaned.id;
@@ -1732,7 +1732,7 @@
         function downloadAsJSON(data, fileName) {
             if (data.length === 0) return;
             
-            // 清理不需要的字段
+
             const cleanedData = data.map(item => {
                 const cleaned = {...item};
                 delete cleaned.id;
@@ -1755,7 +1755,7 @@
             URL.revokeObjectURL(url);
         }
 
-        // 事件监听
+
         document.addEventListener('DOMContentLoaded', async () => {
             if (window.innerWidth <= 768) {
                 navbarLinks.style.display = 'none';
