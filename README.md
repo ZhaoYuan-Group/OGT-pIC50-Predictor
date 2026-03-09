@@ -11,8 +11,8 @@ pip install -r environment.txt
 ```
 ## Run
 ```bash
-nohup uvicorn main:app --host 0.0.0.0 --port 8000 --reload &
-open index.html
+run backend/main.py
+open fronend/index.html
 ```
 ## Overview
 <img width="8192" height="3598" alt="7" src="https://github.com/user-attachments/assets/a94b0c50-d6b6-46a0-8f36-1b29be9900ad" />
